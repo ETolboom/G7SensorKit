@@ -301,6 +301,27 @@ class G7PairingPlannerTests: XCTestCase {
         XCTAssertEqual(planner.heldSlotBlockerCount, 1, "the sensor that answered is not holding anything up")
     }
 
+    /// Once its last turn is spent there is nothing left to wait for, so the
+    /// row must stop saying the run is still watching it.
+    func testASensorStopsWaitingOnceItsLastTurnIsSpent() {
+        var planner = G7PairingPlanner()
+        let start = Date()
+        planner.addCandidate(id: a, name: "busy", isPhoneSlotHeld: true)
+        _ = planner.ruleOutCurrent(.inUseElsewhere)
+        XCTAssertTrue(planner.candidates.first?.isAwaitingASlotToFree ?? false)
+
+        for cycle in 0 ..< G7PairingPlanner.heldSlotCyclesBeforeGivingUp {
+            planner.recordAdvertisement(id: a, isPhoneSlotHeld: true, at: start + Double(cycle) * 300)
+        }
+        XCTAssertTrue(planner.candidates.first?.isAwaitingASlotToFree ?? false, "still owed a turn")
+
+        XCTAssertTrue(planner.admitBlockerForFinalAttempt())
+        _ = planner.ruleOutCurrent(.inUseElsewhere)
+
+        XCTAssertFalse(planner.candidates.first?.isAwaitingASlotToFree ?? true)
+        XCTAssertEqual(planner.heldSlotBlocker?.id, a)
+    }
+
     func testTheLastTurnIsOnlyOfferedOnce() {
         var planner = G7PairingPlanner()
         let start = Date()

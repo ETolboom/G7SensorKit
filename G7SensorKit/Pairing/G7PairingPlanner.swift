@@ -147,6 +147,8 @@ public struct G7PairingCandidate: Identifiable, Equatable {
     public var isAwaitingASlotToFree: Bool {
         status.ruleOutReason == .inUseElsewhere
             && readmissions < G7PairingPlanner.maximumReadmissions
+            // Its last turn has been and gone, so nothing is being waited for.
+            && !hasHadFinalAttempt
     }
 }
 
