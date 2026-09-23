@@ -2783,6 +2783,9 @@
     "hr" : {
       "comment" : "Abbreviated hours unit after a remaining-time number\nUnit after the hours-since-last-reading number"
     },
+    "I've Removed It" : {
+      "comment" : "Button title to confirm the Dexcom app was deleted or offloaded"
+    },
     "If iOS asks to pair with the sensor, tap Pair." : {
       "comment" : "Hint about the system Bluetooth pairing prompt during G7 pairing"
     },
@@ -5836,6 +5839,9 @@
     },
     "The %@ app is gone." : {
       "comment" : "Message once the Dexcom app has been removed (1: app name)"
+    },
+    "The %@ app is still on this phone. Remove it, then come back here." : {
+      "comment" : "Message when the user tries to continue with the Dexcom app still present (1: app name)"
     },
     "The barcode on the sensor applicator holds the 4-digit pairing code and the sensor's serial number." : {
       "comment" : "First line of the scan screen"

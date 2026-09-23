@@ -10,7 +10,10 @@ import SwiftUI
 /// Shown before pairing when a Dexcom app is installed.
 ///
 /// A sensor admits one display at a time and the Dexcom app will keep trying
-/// to be it, so the app has to go before pairing.
+/// to be it, so the app has to go before pairing, and this screen will not
+/// move on until it has. The check is made when the button is pressed rather
+/// than by disabling it: a disabled button with no explanation is a dead end,
+/// while a press that refuses can say why.
 ///
 /// Both ways out remove the binary, which is the point. Force quitting and
 /// revoking Bluetooth were offered here once and are not any more: each
@@ -31,8 +34,9 @@ struct G7DexcomAppWarningView: View {
     /// stop until pairing completes.
     var isReplacingDexcomAppSession: Bool
 
-    /// Re-checks whether the app is still installed, so leaving to delete it
-    /// and coming back is reflected here.
+    /// Re-checks whether the app is still installed. The screen refuses to
+    /// move on while it is, and the answer is taken again at the moment of
+    /// the press, not read off state that may have gone stale.
     var isDexcomAppInstalled: () -> Bool
     var didContinue: () -> Void
 
@@ -41,6 +45,8 @@ struct G7DexcomAppWarningView: View {
     @Environment(\.scenePhase) private var scenePhase
 
     @State private var isInstalled = true
+    /// Set when the button was pressed with the app still there, to say so.
+    @State private var wasStillInstalledOnPress = false
 
     var body: some View {
         VStack(spacing: 0) {
@@ -82,9 +88,29 @@ struct G7DexcomAppWarningView: View {
                 .padding()
             }
 
-            Button(action: didContinue) {
-                Text(LocalizedString("Continue", comment: "Button title for starting setup"))
-                    .actionButtonStyle(.primary)
+            VStack(spacing: 10) {
+                if wasStillInstalledOnPress {
+                    Text(String(format: LocalizedString("The %@ app is still on this phone. Remove it, then come back here.", comment: "Message when the user tries to continue with the Dexcom app still present (1: app name)"), G7DexcomApp.installedAppNames))
+                        .font(.footnote)
+                        .multilineTextAlignment(.center)
+                        .foregroundColor(guidanceColors.critical)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+
+                Button(action: {
+                    // Asked again here, not taken from `isInstalled`: that is
+                    // refreshed on a foreground, and this is the moment the
+                    // answer actually decides something.
+                    if isDexcomAppInstalled() {
+                        isInstalled = true
+                        wasStillInstalledOnPress = true
+                    } else {
+                        didContinue()
+                    }
+                }) {
+                    Text(LocalizedString("I've Removed It", comment: "Button title to confirm the Dexcom app was deleted or offloaded"))
+                        .actionButtonStyle(.primary)
+                }
             }
             .padding([.horizontal, .bottom])
         }
@@ -97,6 +123,9 @@ struct G7DexcomAppWarningView: View {
         .onChange(of: scenePhase) { _, phase in
             if phase == .active {
                 isInstalled = isDexcomAppInstalled()
+                if !isInstalled {
+                    wasStillInstalledOnPress = false
+                }
             }
         }
     }
