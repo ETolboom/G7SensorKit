@@ -257,7 +257,11 @@ final class G7PairingViewModel: ObservableObject {
         guard isWorking,
               activeCandidate == nil,
               !candidates.isEmpty,
-              candidates.contains(where: { $0.status.ruleOutReason == .wrongPairingCode })
+              // Every one of them, not just one. A neighbour's sensor saying
+              // the code is not its own is the expected way to learn it is a
+              // neighbour, and telling the user to go and check the applicator
+              // over that sends them after a fault that is not there.
+              candidates.allSatisfy({ $0.status.ruleOutReason == .wrongPairingCode })
         else {
             return nil
         }
