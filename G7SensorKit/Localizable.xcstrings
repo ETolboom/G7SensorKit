@@ -323,7 +323,7 @@
         }
       }
     },
-    "In use by another phone" : {
+    "In use by another app" : {
       "comment" : "Reason a G7 sensor was ruled out during pairing: another display holds its slot"
     },
     "No pairing code or saved key is available for this sensor." : {
@@ -338,7 +338,7 @@
     "No sensor was found in 30 minutes. Make sure the sensor is inserted and within range, and that no other phone or app is using it." : {
       "comment" : "Pairing failure reason when the scan for a G7 sensor finds nothing at all"
     },
-    "Not this sensor's code" : {
+    "Not your sensor" : {
       "comment" : "Reason a G7 sensor was ruled out during pairing: its challenge response did not match the entered code"
     },
     "OK" : {

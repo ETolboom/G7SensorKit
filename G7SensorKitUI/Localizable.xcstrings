@@ -457,14 +457,14 @@
     "%1$@ will read glucose from the Dexcom app's session until you pair a sensor. The Dexcom app must stay installed for this to work." : {
       "comment" : "Explanation of eavesdropping mode on G7StartupView (1: appName)"
     },
-    "%@. Other Dexcom sensors are nearby, so pairing checks each in turn until it finds the one your code belongs to, which can take a few minutes." : {
-      "comment" : "Pairing detail while working through several nearby sensors (1: the sensor being tried)"
-    },
     "%d-hour" : {
       "comment" : "Warmup duration in hours, adjectival (1: hours)"
     },
     "%d-minute" : {
       "comment" : "Warmup duration in minutes, adjectival (1: minutes)"
+    },
+    "A sensor in range is in use by another app. Pairing keeps trying while it frees up, which takes up to 15 minutes. Removing the Dexcom app frees it sooner." : {
+      "comment" : "Pairing notice while waiting for a sensor whose display slot another app holds"
     },
     "•" : {
       "comment" : "A bullet point.",
@@ -1031,6 +1031,9 @@
     },
     "Change Code" : {
       "comment" : "Button title to go back and edit the pairing code"
+    },
+    "Checking the sensors in range. This can take a few minutes." : {
+      "comment" : "Pairing guidance while working through the sensors that have been found"
     },
     "Choose a site. Adults: the back of the upper arm. Ages 7 and up may also use the abdomen; ages 2 to 6 may also use the upper buttocks." : {
       "comment" : "Apply step 1: choosing a site"
@@ -2135,9 +2138,6 @@
     "Entered %1$@, refused by the sensor (status %2$d)" : {
       "comment" : "Calibration outcome: rejected (1: time entered, 2: status code)"
     },
-    "Every sensor found so far has been ruled out. Still looking for another one; a sensor in use elsewhere only announces itself briefly, every 5 minutes." : {
-      "comment" : "Pairing guidance once every discovered sensor has been ruled out"
-    },
     "Fingersticks only" : {
       "comment" : "Calibration advice heading: fingersticks only"
     },
@@ -2801,11 +2801,11 @@
     "In this mode %1$@ can only read glucose while the Dexcom G7 app is installed and running a session. Pair the sensor directly instead, or reinstall the Dexcom app." : {
       "comment" : "Body of the settings warning when the Dexcom app is missing in eavesdropping mode (1: appName)"
     },
+    "In use by another app; waiting for it to free up" : {
+      "comment" : "Status of a G7 sensor set aside as busy while the run waits for its display slot to free"
+    },
     "INSERT SENSOR" : {
       "comment" : "Section label above the insert-sensor steps"
-    },
-    "In use by another phone; waiting for it to free up" : {
-      "comment" : "Status of a G7 sensor set aside as busy while the run waits for its display slot to free"
     },
     "Keep the applicator until you have paired: the 4-digit pairing code is printed on it. Dispose of it as sharps afterwards." : {
       "comment" : "Apply step 5 note: keep the applicator for its code"
@@ -3676,9 +3676,6 @@
     },
     "Pairing Failed" : {
       "comment" : "Pairing status on failure"
-    },
-    "Pairing, attempt %1$d of %2$d" : {
-      "comment" : "Status of the G7 sensor under handshake (1: attempt number, 2: attempts allowed)"
     },
     "Pairing…" : {
       "comment" : "Pairing status during the handshake"
@@ -6182,8 +6179,8 @@
     "Try Again" : {
       "comment" : "Button title to retry pairing"
     },
-    "Trying again, %1$d of %2$d" : {
-      "comment" : "Status of a G7 sensor being tried again after its display slot freed up (1: turn number, 2: turns allowed)"
+    "Trying again" : {
+      "comment" : "Status of a G7 sensor being tried again after its display slot freed up)"
     },
     "Turned off for %1$@. These are what let an alert break through a Focus without Critical Alerts." : {
       "comment" : "Status row detail: time sensitive disabled (1: appName)"
@@ -6365,7 +6362,7 @@
     "Waiting its turn" : {
       "comment" : "Status of a discovered G7 sensor waiting its turn"
     },
-    "Waiting; in use by another phone" : {
+    "Waiting; in use by another app" : {
       "comment" : "Status of a discovered G7 sensor whose display slot is taken, waiting its turn"
     },
     "Warmup" : {

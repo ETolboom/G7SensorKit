@@ -8,12 +8,23 @@
 import G7SensorKit
 import SwiftUI
 
-/// Narrates the pairing run: what has been found, which sensor is being
-/// tried, and which ones are out of the running and why.
+/// Reports the pairing run: that it is working, how long it has been going,
+/// and the few things the user can act on.
 ///
 /// Pairing is not one opaque search. Spent applicators in a drawer and the
 /// sensor on the arm all advertise, so the run works through them in turn and
-/// the screen has to show that, or a perfectly healthy run looks stuck.
+/// the screen has to show that much, or a perfectly healthy run looks stuck.
+///
+/// It shows no more than that while the run is going. Which sensor is under
+/// trial, and what each one answered, are true but not actionable, and they
+/// read as claims about the user rather than about a candidate: "not your
+/// sensor" on a neighbour's sensor invites a hunt for a wrong code, and a
+/// visible "attempt 2 of 3" invites cancelling to get a fresh three, which
+/// throws away the run's evidence and restarts its clock. So the list is a
+/// disclosure, closed while the run is live and open once it has failed,
+/// where the same detail explains an outcome instead of narrating a process.
+/// The full narration goes to the device log, which is where anyone who
+/// needs it is looking anyway.
 struct G7PairingView: View {
     @ObservedObject var viewModel: G7PairingViewModel
     var didEditCode: () -> Void
@@ -21,6 +32,7 @@ struct G7PairingView: View {
     @Environment(\.guidanceColors) private var guidanceColors
 
     @State private var rowHeight = CandidateRowHeight.defaultValue
+    @State private var isShowingDetails = false
 
     private var isPulsing: Bool {
         viewModel.isWorking && viewModel.bluetoothProblem == nil
@@ -39,15 +51,15 @@ struct G7PairingView: View {
 
                     status
 
-                    if !viewModel.candidates.isEmpty {
-                        candidateList
-                    }
-
                     if viewModel.activeCandidate != nil {
                         Text(LocalizedString("If iOS asks to pair with the sensor, tap Pair.", comment: "Hint about the system Bluetooth pairing prompt during G7 pairing"))
                             .font(.footnote)
                             .foregroundColor(.secondary)
                             .fixedSize(horizontal: false, vertical: true)
+                    }
+
+                    if !viewModel.candidates.isEmpty {
+                        details
                     }
                 }
                 .padding()
@@ -114,6 +126,14 @@ struct G7PairingView: View {
                     .fixedSize(horizontal: false, vertical: true)
             }
 
+            if let notice = viewModel.busyNotice {
+                Label(notice, systemImage: "clock.badge.exclamationmark")
+                    .font(.footnote)
+                    .multilineTextAlignment(.leading)
+                    .foregroundColor(guidanceColors.warning)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+
             if let hint = viewModel.wrongCodeHint {
                 Label(hint, systemImage: "exclamationmark.circle")
                     .font(.footnote)
@@ -124,12 +144,44 @@ struct G7PairingView: View {
         }
     }
 
-    private var candidateList: some View {
+    /// The list, behind a disclosure. Closed while the run is live, open once
+    /// it has failed: the same rows that only invite interpretation during a
+    /// healthy run are the explanation of an unhealthy one.
+    ///
+    /// `isShowingDetails` is only ever raised automatically, never lowered, so
+    /// a user who opened it mid-run is not overruled when the run ends.
+    private var details: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text(String(format: LocalizedString("Sensors found (%d)", comment: "Header of the list of sensors discovered while pairing (1: count)"), viewModel.candidates.count))
+            Button {
+                withAnimation { isShowingDetails.toggle() }
+            } label: {
+                HStack(spacing: 6) {
+                    Text(String(format: LocalizedString("Sensors found (%d)", comment: "Header of the list of sensors discovered while pairing (1: count)"), viewModel.candidates.count))
+                    Image(systemName: "chevron.right")
+                        .font(.caption2.weight(.semibold))
+                        .rotationEffect(.degrees(isShowingDetails ? 90 : 0))
+                }
                 .font(.footnote)
                 .foregroundColor(.secondary)
                 .padding(.leading, 4)
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityAddTraits(isShowingDetails ? [] : .isButton)
+
+            if isShowingDetails {
+                candidateList
+            }
+        }
+        .onChange(of: viewModel.state) { _, state in
+            if case .failed = state {
+                isShowingDetails = true
+            }
+        }
+    }
+
+    private var candidateList: some View {
+        VStack(alignment: .leading, spacing: 8) {
 
             // Three at a time, the rest behind a scroll: a drawer of spent
             // applicators all advertise, and an unbounded list would push the

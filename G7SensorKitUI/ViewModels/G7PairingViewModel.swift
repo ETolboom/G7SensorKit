@@ -210,21 +210,12 @@ final class G7PairingViewModel: ObservableObject {
         case .idle:
             return nil
         case .running:
-            if let candidate = activeCandidate {
-                // With one sensor in range the list says everything. With
-                // several, the run works through them and the screen has to
-                // say why, or trying a neighbour first reads as being stuck.
-                guard candidates.count > 1 else {
-                    return detail(for: candidate)
-                }
-                return String(
-                    format: LocalizedString(
-                        "%@. Other Dexcom sensors are nearby, so pairing checks each in turn until it finds the one your code belongs to, which can take a few minutes.",
-                        comment: "Pairing detail while working through several nearby sensors (1: the sensor being tried)"
-                    ),
-                    detail(for: candidate)
-                )
-            }
+            // Deliberately about the run, not about a candidate. Which sensor
+            // is under trial and what became of the last one are true but not
+            // things the user can act on, and read as claims about their
+            // situation: a neighbour's sensor rejecting the code is how the
+            // run learns it is a neighbour, not a sign the code is wrong.
+            // That detail is a disclosure away, and in the log.
             if candidates.isEmpty {
                 return LocalizedString(
                     "Keep your phone near the sensor. A sensor that was recently used by the Dexcom app or another phone can take up to 15 minutes to become available; this screen will keep looking.",
@@ -232,14 +223,32 @@ final class G7PairingViewModel: ObservableObject {
                 )
             }
             return LocalizedString(
-                "Every sensor found so far has been ruled out. Still looking for another one; a sensor in use elsewhere only announces itself briefly, every 5 minutes.",
-                comment: "Pairing guidance once every discovered sensor has been ruled out"
+                "Checking the sensors in range. This can take a few minutes.",
+                comment: "Pairing guidance while working through the sensors that have been found"
             )
         case .succeeded(_, _, let deviceName):
             return deviceName
         case .failed(let reason):
             return reason
         }
+    }
+
+    /// The one thing mid-run the user can do something about: a sensor whose
+    /// display slot belongs to something else.
+    ///
+    /// Worth its own line because it explains a wait that is otherwise
+    /// inexplicably long, and because there is an action that ends it. It
+    /// says "another app", not "another phone": in the common case it is the
+    /// Dexcom app on this very phone, and sending someone to look for a
+    /// second phone they do not own is worse than saying nothing.
+    var busyNotice: String? {
+        guard isWorking, candidates.contains(where: \.isAwaitingASlotToFree) else {
+            return nil
+        }
+        return LocalizedString(
+            "A sensor in range is in use by another app. Pairing keeps trying while it frees up, which takes up to 15 minutes. Removing the Dexcom app frees it sooner.",
+            comment: "Pairing notice while waiting for a sensor whose display slot another app holds"
+        )
     }
 
     /// The nudge for a run where the code itself looks wrong: every sensor
@@ -264,33 +273,25 @@ final class G7PairingViewModel: ObservableObject {
     /// The one-line status for a sensor in the list on screen.
     func detail(for candidate: G7PairingCandidate) -> String {
         // A sensor on a later turn is one whose slot freed up after it turned
-        // us away, which is the thing worth saying about it. Its attempts
-        // start over each turn, so the attempt number would read as though it
-        // had made no progress.
+        // us away. Worth saying, without the count: a countdown invites
+        // cancelling before it runs out, and cancelling throws away the
+        // held-slot evidence and restarts the clock.
         if candidate.turn > 1, !candidate.status.isSettled {
-            return String(
-                format: LocalizedString("Trying again, %1$d of %2$d", comment: "Status of a G7 sensor being tried again after its display slot freed up (1: turn number, 2: turns allowed)"),
-                candidate.turn,
-                G7PairingCandidate.maximumTurns
-            )
+            return LocalizedString("Trying again", comment: "Status of a G7 sensor being tried again after its display slot freed up)")
         }
 
         switch candidate.status {
         case .waiting:
             return candidate.isPhoneSlotHeld
-                ? LocalizedString("Waiting; in use by another phone", comment: "Status of a discovered G7 sensor whose display slot is taken, waiting its turn")
+                ? LocalizedString("Waiting; in use by another app", comment: "Status of a discovered G7 sensor whose display slot is taken, waiting its turn")
                 : LocalizedString("Waiting its turn", comment: "Status of a discovered G7 sensor waiting its turn")
         case .connecting:
             return LocalizedString("Connecting", comment: "Status of the G7 sensor being connected to")
-        case .pairing(let attempt):
-            return String(
-                format: LocalizedString("Pairing, attempt %1$d of %2$d", comment: "Status of the G7 sensor under handshake (1: attempt number, 2: attempts allowed)"),
-                attempt,
-                G7PairingCandidate.maximumAttempts
-            )
+        case .pairing:
+            return LocalizedString("Pairing", comment: "Status of the G7 sensor under handshake")
         case .ruledOut where candidate.isAwaitingASlotToFree:
             // Set aside, not finished with: the run is still listening to it.
-            return LocalizedString("In use by another phone; waiting for it to free up", comment: "Status of a G7 sensor set aside as busy while the run waits for its display slot to free")
+            return LocalizedString("In use by another app; waiting for it to free up", comment: "Status of a G7 sensor set aside as busy while the run waits for its display slot to free")
         case .ruledOut(let reason):
             return reason.localizedDescription
         case .paired:

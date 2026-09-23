@@ -12,7 +12,10 @@ import Foundation
 
 /// Why a sensor was ruled out for the rest of the run.
 public enum G7PairingRuleOutReason: Equatable {
-    /// It answered our challenge with something our key did not produce.
+    /// It answered our challenge with something our key did not produce, so
+    /// this code is not its code. Worded as "not your sensor" on screen: with
+    /// several in range this is the ordinary way a neighbour's sensor is
+    /// identified, and "wrong code" reads as a fault the user has to fix.
     ///
     /// On its own that is not proof the code is wrong — a sensor whose slot
     /// another display holds answers identically — so this is only reached
@@ -30,9 +33,9 @@ public enum G7PairingRuleOutReason: Equatable {
     public var localizedDescription: String {
         switch self {
         case .wrongPairingCode:
-            return LocalizedString("Not this sensor's code", comment: "Reason a G7 sensor was ruled out during pairing: its challenge response did not match the entered code")
+            return LocalizedString("Not your sensor", comment: "Reason a G7 sensor was ruled out during pairing: its challenge response did not match the entered code")
         case .inUseElsewhere:
-            return LocalizedString("In use by another phone", comment: "Reason a G7 sensor was ruled out during pairing: another display holds its slot")
+            return LocalizedString("In use by another app", comment: "Reason a G7 sensor was ruled out during pairing: another display holds its slot")
         case .refused:
             return LocalizedString("Refused the connection", comment: "Reason a G7 sensor was ruled out during pairing: it rejected the session")
         case .unreachable:
