@@ -623,10 +623,23 @@ public final class G7PairingService {
             }
 
         case .waitForNewCandidates:
-            // Nothing left that can pair, which is not the end of the run: the
-            // sensor being paired may simply not have advertised yet. One that
-            // a display used in the last ~15 minutes only speaks up for about
-            // two seconds around each 5-minute reading.
+            // Nothing left that can pair, which is usually not the end of the
+            // run: the sensor being paired may simply not have advertised
+            // yet. One that a display used in the last ~15 minutes only
+            // speaks up for about two seconds around each 5-minute reading.
+            //
+            // A scanned serial is the exception. The scan has already
+            // narrowed the run to the one sensor, so a verdict on it is a
+            // verdict on the code, and no sensor is going to turn up later to
+            // change it. Waiting out the deadline would only hide that.
+            if expectedSerial != nil, !planner.candidates.contains(where: \.isAwaitingASlotToFree) {
+                report("The scanned sensor is ruled out and no other can stand in for it; giving up")
+                fail(LocalizedString(
+                    "That code does not belong to the sensor you scanned. Check the 4-digit code on the applicator and try again.",
+                    comment: "Pairing failure reason when the scanned sensor rejected the entered code"
+                ))
+                return
+            }
             report("Every sensor found so far is ruled out; still looking")
             bluetoothManager?.disconnectAll()
             readyManagers.removeAll()
@@ -698,7 +711,7 @@ public final class G7PairingService {
 
 extension G7PairingService: G7BluetoothManagerDelegate {
 
-    func bluetoothManager(_ manager: G7BluetoothManager, shouldConnectPeripheral peripheral: CBPeripheral, advertisementData: [String: Any]) -> PeripheralConnectionCommand {
+    func bluetoothManager(_ manager: G7BluetoothManager, shouldConnectPeripheral peripheral: CBPeripheral, advertisementData: [String: Any], rssi: NSNumber) -> PeripheralConnectionCommand {
         // A finished run must never connect again: the sensor it just paired
         // belongs to the session manager now.
         guard !state.isFinished,
@@ -728,6 +741,9 @@ extension G7PairingService: G7BluetoothManagerDelegate {
             return .ignore
         }
 
+        // CoreBluetooth reports 127 when it cannot read the signal; only a
+        // real (negative dBm) reading orders candidates by proximity.
+        let signal = rssi.intValue < 0 ? rssi.intValue : G7PairingPlanner.unknownRSSI
         let id = peripheral.identifier
         // A ruled-out sensor is still listened to, just never connected to
         // again: what its advertisement says about its display slot is the
@@ -742,15 +758,15 @@ extension G7PairingService: G7BluetoothManagerDelegate {
             // unreadable advertisement says nothing and changes nothing.
             let slot = advertisement.isSlotHeld(for: displayType)
             let isHeld = slot ?? false
-            if self.planner.addCandidate(id: id, name: advertisement.name, isPhoneSlotHeld: isHeld) {
+            if self.planner.addCandidate(id: id, name: advertisement.name, isPhoneSlotHeld: isHeld, rssi: signal) {
                 self.report(isHeld
                     ? "Found \(advertisement.name); another phone connected recently, so trying others first"
                     : "Found \(advertisement.name)")
-                self.planner.recordAdvertisement(id: id, isPhoneSlotHeld: slot)
+                self.planner.recordAdvertisement(id: id, isPhoneSlotHeld: slot, rssi: signal)
                 self.publishProgress()
             } else {
                 let before = self.planner.candidates.first { $0.id == id }
-                if self.planner.recordAdvertisement(id: id, isPhoneSlotHeld: slot) {
+                if self.planner.recordAdvertisement(id: id, isPhoneSlotHeld: slot, rssi: signal) {
                     let after = self.planner.candidates.first { $0.id == id }
                     if let after = after, after.readmissions != before?.readmissions {
                         self.report("\(advertisement.name) says its slot is free again; giving it another turn (\(after.readmissions) of \(G7PairingPlanner.maximumReadmissions))")

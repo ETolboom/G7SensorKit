@@ -13,6 +13,8 @@ struct G7PairingSuccessView: View {
     /// search just settled on rather than a stand-in.
     var model: G7SensorModel
     var deviceName: String?
+    /// Whether setup continues after this page (Dexcom Share sign-in).
+    var hasNextStep = false
     var didFinish: () -> Void
 
     @Environment(\.appName) private var appName
@@ -53,7 +55,9 @@ struct G7PairingSuccessView: View {
             }
 
             Button(action: didFinish) {
-                Text(LocalizedString("Done", comment: "Button title to finish setup"))
+                Text(hasNextStep
+                    ? LocalizedString("Continue", comment: "Button title to continue")
+                    : LocalizedString("Done", comment: "Button title to finish setup"))
                     .actionButtonStyle(.primary)
             }
             .padding([.horizontal, .bottom])

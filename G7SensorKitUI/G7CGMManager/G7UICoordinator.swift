@@ -29,6 +29,8 @@ private enum G7Screen {
     case enterCode
     case pairing(code: String, serial: String?)
     case pairingSuccess(deviceName: String?, model: G7SensorModel)
+    /// Optional Dexcom Share sign-in at the end of first-time setup.
+    case shareSignIn
     case settings
 }
 
@@ -116,6 +118,8 @@ class G7UICoordinator: UINavigationController, CGMManagerOnboarding, CompletionN
             return LocalizedString("Pairing", comment: "Navigation title of the pairing progress screen")
         case .pairingSuccess:
             return LocalizedString("Paired", comment: "Navigation title of the pairing success screen")
+        case .shareSignIn:
+            return LocalizedString("Dexcom Share", comment: "Navigation title of the Share sign-in page")
         case .settings:
             return cgmManager?.localizedTitle
         }
@@ -199,9 +203,26 @@ class G7UICoordinator: UINavigationController, CGMManagerOnboarding, CompletionN
             return hostingController(view, largeTitle: false)
 
         case .pairingSuccess(let deviceName, let model):
-            let view = G7PairingSuccessView(model: model, deviceName: deviceName) { [weak self] in
-                self?.finishPairingFlow()
+            let offersShare = isInitialSetup && cgmManager?.shareAccount == nil
+            let view = G7PairingSuccessView(model: model, deviceName: deviceName, hasNextStep: offersShare) { [weak self] in
+                guard let self = self else { return }
+                if offersShare {
+                    self.navigate(to: .shareSignIn)
+                } else {
+                    self.finishPairingFlow()
+                }
             }
+            return hostingController(view, largeTitle: false)
+
+        case .shareSignIn:
+            let view = G7ShareSignInView(
+                signIn: { [weak self] credentials in
+                    guard let manager = self?.cgmManager else { throw G7ShareError.notSignedIn }
+                    try await manager.signInToShare(credentials)
+                },
+                didFinish: { [weak self] in self?.finishPairingFlow() },
+                didSkip: { [weak self] in self?.finishPairingFlow() }
+            )
             return hostingController(view, largeTitle: false)
 
         case .settings:

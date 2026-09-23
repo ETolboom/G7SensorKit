@@ -610,4 +610,90 @@ class G7PairingPlannerTests: XCTestCase {
         planner.addCandidate(id: c, name: "DX0134", isPhoneSlotHeld: false)
         XCTAssertEqual(planner.candidates.map(\.model), [.g7, .onePlus, .stelo])
     }
+
+    // MARK: - Signal strength ordering
+
+    /// Pairing happens with the phone up to the freshly inserted sensor, so
+    /// the intended one is usually the strongest signal: try the nearest
+    /// untried sensor first.
+    func testStrongerSignalGoesFirstWithinClass() {
+        var planner = G7PairingPlanner()
+        planner.addCandidate(id: a, name: "current", isPhoneSlotHeld: false, rssi: -50)
+        planner.addCandidate(id: b, name: "weak", isPhoneSlotHeld: false, rssi: -85)
+        planner.addCandidate(id: c, name: "strong", isPhoneSlotHeld: false, rssi: -42)
+        XCTAssertEqual(planner.candidates.map(\.name), ["current", "strong", "weak"])
+    }
+
+    /// Signal strength orders within a class but never ahead of it: a held
+    /// sensor is likely to reject us however strong it is.
+    func testSignalDoesNotOverrideHeldFreeOrder() {
+        var planner = G7PairingPlanner()
+        planner.addCandidate(id: a, name: "current", isPhoneSlotHeld: false, rssi: -50)
+        planner.addCandidate(id: b, name: "held-strong", isPhoneSlotHeld: true, rssi: -30)
+        planner.addCandidate(id: c, name: "free-weak", isPhoneSlotHeld: false, rssi: -88)
+        XCTAssertEqual(planner.candidates.map(\.name), ["current", "free-weak", "held-strong"])
+    }
+
+    /// With no signal reading, ordering is unchanged from discovery order.
+    func testUnknownSignalKeepsDiscoveryOrder() {
+        var planner = G7PairingPlanner()
+        planner.addCandidate(id: a, name: "current", isPhoneSlotHeld: false)
+        planner.addCandidate(id: b, name: "first", isPhoneSlotHeld: false)
+        planner.addCandidate(id: c, name: "second", isPhoneSlotHeld: false)
+        XCTAssertEqual(planner.candidates.map(\.name), ["current", "first", "second"])
+    }
+
+    /// A fresh advertisement carries a new signal reading, which reorders the
+    /// untried tail. It is not reported as a change: the log narrates slots
+    /// and turns, and a reading that moves by a decibel is neither.
+    func testAdvertisementAppliesNewSignalWithoutReportingIt() {
+        var planner = G7PairingPlanner()
+        planner.addCandidate(id: a, name: "current", isPhoneSlotHeld: false, rssi: -50)
+        planner.addCandidate(id: b, name: "b", isPhoneSlotHeld: false, rssi: -80)
+        planner.addCandidate(id: c, name: "c", isPhoneSlotHeld: false, rssi: -70)
+        XCTAssertEqual(planner.candidates.map(\.name), ["current", "c", "b"])
+
+        XCTAssertFalse(planner.recordAdvertisement(id: b, isPhoneSlotHeld: nil, rssi: -30))
+        XCTAssertEqual(planner.candidates.map(\.name), ["current", "b", "c"])
+    }
+
+    /// A packet with no readable manufacturer data still carries a signal
+    /// strength, and nearly half of them arrive that way. Taking the reading
+    /// must not be read as the sensor announcing a free slot.
+    func testSignalFromAnUnreadableAdvertisementDoesNotTouchTheSlot() {
+        var planner = G7PairingPlanner()
+        planner.addCandidate(id: a, name: "held", isPhoneSlotHeld: true, rssi: -70)
+
+        XCTAssertFalse(planner.recordAdvertisement(id: a, isPhoneSlotHeld: nil, rssi: -40))
+        XCTAssertEqual(planner.candidates.first?.rssi, -40)
+        XCTAssertTrue(planner.candidates.first?.isPhoneSlotHeld == true)
+        XCTAssertNil(planner.candidates.first?.freeSince)
+    }
+
+    /// Signal strength orders sensors the run has yet to try. A sensor let
+    /// back in has already refused us once, so however loud it is, it waits
+    /// behind the ones that have not had their turn.
+    func testAReadmittedSensorStaysBehindUntriedOnesHoweverStrong() {
+        var planner = G7PairingPlanner()
+        let start = Date()
+        planner.addCandidate(id: a, name: "busy", isPhoneSlotHeld: true, rssi: -25)
+        _ = planner.ruleOutCurrent(.inUseElsewhere)
+
+        planner.addCandidate(id: b, name: "under-trial", isPhoneSlotHeld: false, rssi: -60)
+        planner.addCandidate(id: c, name: "untried", isPhoneSlotHeld: false, rssi: -80)
+        XCTAssertEqual(planner.currentCandidate?.name, "under-trial")
+
+        planner.recordAdvertisement(id: a, isPhoneSlotHeld: false, at: start)
+        XCTAssertTrue(planner.recordAdvertisement(
+            id: a,
+            isPhoneSlotHeld: false,
+            at: start + G7PairingPlanner.readmissionFreeDebounce
+        ))
+        XCTAssertEqual(planner.currentCandidate?.name, "under-trial", "a handshake in flight is undisturbed")
+
+        // The readmitted sensor is now both free and the loudest thing in the
+        // room, and still waits behind the sensor that has not had a turn.
+        planner.recordAdvertisement(id: c, isPhoneSlotHeld: false, rssi: -81, at: start + 60)
+        XCTAssertEqual(planner.candidates.map(\.name), ["under-trial", "untried", "busy"])
+    }
 }

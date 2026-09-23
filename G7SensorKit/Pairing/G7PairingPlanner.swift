@@ -5,7 +5,7 @@
 //  Copyright © 2026 LoopKit Authors. All rights reserved.
 //
 //  Derived from DexKit by Erik Tolboom (https://github.com/nightscout/DexKit):
-//  candidate planning follows its G7PairingPlanner.
+//  candidate planning follows its G7PairingRunner.
 //
 
 import Foundation
@@ -97,6 +97,9 @@ public struct G7PairingCandidate: Identifiable, Equatable {
     /// taken. It may be our own hold on it, so it is a reason to defer the
     /// sensor, never to drop it.
     public var isPhoneSlotHeld: Bool
+    /// Signal strength of the last advertisement that carried a readable
+    /// one, in dBm, or `G7PairingPlanner.unknownRSSI` if none has.
+    public var rssi: Int
     /// How many separate advertising cycles announced the slot as taken.
     /// Read from the advertisement's types-in-use byte, so it costs no
     /// connection and keeps counting after the sensor is ruled out.
@@ -141,6 +144,12 @@ public struct G7PairingCandidate: Identifiable, Equatable {
         readmissions + 1
     }
 
+    /// Whether the run has already spent a turn on this sensor. Ordering
+    /// keeps these behind sensors still on their first.
+    var hasBeenTried: Bool {
+        readmissions > 0 || hasHadFinalAttempt
+    }
+
     /// Whether the run has set this sensor aside as busy but is still
     /// listening to it, ready to give it another turn if its slot frees. Not
     /// out of the running, however the row reads.
@@ -159,9 +168,12 @@ public struct G7PairingCandidate: Identifiable, Equatable {
 /// sensors in range. The order matters: a sensor whose display slot is held
 /// by another phone will reject us, and four rejections in a row make a
 /// sensor stop accepting connections for a while. So unheld sensors go
-/// first, a sensor that rejects us is dropped rather than retried, and
-/// ordinary failures (a dropped link, a timeout) get a bounded number of
-/// retries before moving on.
+/// first, and within a class the strongest signal goes first — pairing
+/// happens with the phone held up to the freshly inserted sensor, so the
+/// intended one is usually (not always) the nearest and loudest. A sensor
+/// that rejects us is dropped rather than retried, and ordinary failures
+/// (a dropped link, a timeout) get a bounded number of retries before
+/// moving on.
 ///
 /// Running out of candidates is not a failure: an expired sensor, a spent
 /// applicator in a drawer and the sensor on the user's arm all advertise, and
@@ -173,6 +185,13 @@ public struct G7PairingCandidate: Identifiable, Equatable {
 /// Pure bookkeeping with no Bluetooth of its own, so the policy is testable
 /// in isolation.
 struct G7PairingPlanner {
+
+    /// RSSI stand-in for an advertisement whose signal strength is unknown
+    /// (CoreBluetooth reports 127 when it cannot be read). Sorts weakest, so
+    /// candidates with a real reading are preferred, and equal-signal ties —
+    /// including every candidate when no signal is known — fall back to the
+    /// order already established.
+    static let unknownRSSI = Int.min
 
     enum Action: Equatable {
         /// Try the current candidate again.
@@ -339,18 +358,18 @@ struct G7PairingPlanner {
     /// Adds a newly discovered sensor. Returns false if it was already known,
     /// including when it was ruled out earlier.
     ///
-    /// New candidates go behind everything already tried, and behind
-    /// untried candidates of a better class: an unheld newcomer is queued
-    /// ahead of untried held candidates, since those are likely to reject us.
+    /// New candidates go behind everything already tried, then take their
+    /// place among the untried by class and signal strength.
     @discardableResult
-    mutating func addCandidate(id: UUID, name: String, isPhoneSlotHeld: Bool) -> Bool {
+    mutating func addCandidate(id: UUID, name: String, isPhoneSlotHeld: Bool, rssi: Int = unknownRSSI) -> Bool {
         guard !candidates.contains(where: { $0.id == id }) else {
             return false
         }
-        let candidate = G7PairingCandidate(
+        candidates.append(G7PairingCandidate(
             id: id,
             name: name,
             isPhoneSlotHeld: isPhoneSlotHeld,
+            rssi: rssi,
             heldSlotCycles: 0,
             lastHeldSlotCycle: nil,
             wasHeldByAnotherDisplay: isPhoneSlotHeld,
@@ -359,17 +378,38 @@ struct G7PairingPlanner {
             freeSince: nil,
             hasHadFinalAttempt: false,
             status: .waiting
-        )
-
-        // Never reorder anything at or before the current index: the current
-        // candidate may be mid-handshake.
-        let untried = candidates.indices.filter { $0 > currentIndex }
-        if !isPhoneSlotHeld, let firstHeld = untried.first(where: { candidates[$0].isPhoneSlotHeld }) {
-            candidates.insert(candidate, at: firstHeld)
-        } else {
-            candidates.append(candidate)
-        }
+        ))
+        sortUntriedTail()
         return true
+    }
+
+    /// Orders the untried tail: sensors whose slot is free before held ones,
+    /// sensors on their first turn before ones already tried, then strongest
+    /// signal, then the order already established. A stable sort, so equal
+    /// readings and unknown ones keep their place.
+    ///
+    /// Never touches the current candidate or anything before it: the current
+    /// one may be mid-handshake, and the ones before it are settled.
+    private mutating func sortUntriedTail() {
+        let tailStart = currentIndex + 1
+        guard tailStart < candidates.count else {
+            return
+        }
+        let ordered = candidates[tailStart...].enumerated().sorted { lhs, rhs in
+            if lhs.element.isPhoneSlotHeld != rhs.element.isPhoneSlotHeld {
+                return !lhs.element.isPhoneSlotHeld
+            }
+            // A sensor that has already refused us once, however strong its
+            // signal, is the last one worth spending a turn on.
+            if lhs.element.hasBeenTried != rhs.element.hasBeenTried {
+                return !lhs.element.hasBeenTried
+            }
+            if lhs.element.rssi != rhs.element.rssi {
+                return lhs.element.rssi > rhs.element.rssi
+            }
+            return lhs.offset < rhs.offset
+        }.map(\.element)
+        candidates.replaceSubrange(tailStart..., with: ordered)
     }
 
     /// Records a fresh advertisement from a known candidate: which slots it
@@ -380,16 +420,28 @@ struct G7PairingPlanner {
     /// sensor, which is worth counting even for a candidate already ruled
     /// out (it is the only thing that explains a run getting nowhere).
     ///
-    /// Returns whether anything changed.
+    /// Returns whether anything worth reporting changed. A fresh signal
+    /// reading on its own does not count: it reorders the untried tail but
+    /// says nothing about the sensor the log is narrating.
     @discardableResult
-    mutating func recordAdvertisement(id: UUID, isPhoneSlotHeld: Bool?, at date: Date = Date()) -> Bool {
+    mutating func recordAdvertisement(id: UUID, isPhoneSlotHeld: Bool?, rssi: Int = unknownRSSI, at date: Date = Date()) -> Bool {
+        guard let index = candidates.firstIndex(where: { $0.id == id }) else {
+            return false
+        }
+
+        // Taken even from a packet that carried nothing else: nearly half of
+        // them arrive without usable manufacturer data, and proximity is
+        // still proximity.
+        if rssi != G7PairingPlanner.unknownRSSI, candidates[index].rssi != rssi {
+            candidates[index].rssi = rssi
+            sortUntriedTail()
+        }
+
         // Nil is "the advertisement did not say", which is not "the slot is
         // free": a packet arriving without usable manufacturer data would
         // otherwise read as the sensor having been let go, and one of those
         // is enough to undo everything its real advertisements said.
-        guard let isPhoneSlotHeld = isPhoneSlotHeld,
-              let index = candidates.firstIndex(where: { $0.id == id })
-        else {
+        guard let isPhoneSlotHeld = isPhoneSlotHeld else {
             return false
         }
 
@@ -428,14 +480,7 @@ struct G7PairingPlanner {
             return true
         }
 
-        // Re-sort only the untried tail, preserving discovery order within
-        // each class.
-        let tailStart = currentIndex + 1
-        guard tailStart < candidates.count else {
-            return true
-        }
-        let tail = candidates[tailStart...]
-        candidates.replaceSubrange(tailStart..., with: tail.filter { !$0.isPhoneSlotHeld } + tail.filter { $0.isPhoneSlotHeld })
+        sortUntriedTail()
         return true
     }
 

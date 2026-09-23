@@ -457,6 +457,9 @@
     "%1$@ will read glucose from the Dexcom app's session until you pair a sensor. The Dexcom app must stay installed for this to work." : {
       "comment" : "Explanation of eavesdropping mode on G7StartupView (1: appName)"
     },
+    "%@. Other Dexcom sensors are nearby, so pairing checks each in turn until it finds the one your code belongs to, which can take a few minutes." : {
+      "comment" : "Pairing detail while working through several nearby sensors (1: the sensor being tried)"
+    },
     "%d-hour" : {
       "comment" : "Warmup duration in hours, adjectival (1: hours)"
     },
@@ -1949,6 +1952,9 @@
           }
         }
       }
+    },
+    "Dexcom Share" : {
+      "comment" : "Navigation title of the Share sign-in page"
     },
     "Difference" : {
       "comment" : "Calibration entry row: meter minus sensor"

@@ -211,7 +211,19 @@ final class G7PairingViewModel: ObservableObject {
             return nil
         case .running:
             if let candidate = activeCandidate {
-                return detail(for: candidate)
+                // With one sensor in range the list says everything. With
+                // several, the run works through them and the screen has to
+                // say why, or trying a neighbour first reads as being stuck.
+                guard candidates.count > 1 else {
+                    return detail(for: candidate)
+                }
+                return String(
+                    format: LocalizedString(
+                        "%@. Other Dexcom sensors are nearby, so pairing checks each in turn until it finds the one your code belongs to, which can take a few minutes.",
+                        comment: "Pairing detail while working through several nearby sensors (1: the sensor being tried)"
+                    ),
+                    detail(for: candidate)
+                )
             }
             if candidates.isEmpty {
                 return LocalizedString(

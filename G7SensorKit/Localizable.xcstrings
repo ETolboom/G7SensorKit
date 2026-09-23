@@ -1280,6 +1280,9 @@
     "Sensor Session Ended" : {
       "comment" : "Alert title at the end of the sensor grace period"
     },
+    "That code does not belong to the sensor you scanned. Check the 4-digit code on the applicator and try again." : {
+      "comment" : "Pairing failure reason when the scanned sensor rejected the entered code"
+    },
     "The pairing code is the 4-digit number printed on the sensor applicator." : {
       "comment" : "Pairing failure reason for a malformed G7 pairing code"
     },
