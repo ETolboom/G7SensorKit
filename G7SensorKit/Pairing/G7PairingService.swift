@@ -628,12 +628,21 @@ public final class G7PairingService {
             // yet. One that a display used in the last ~15 minutes only
             // speaks up for about two seconds around each 5-minute reading.
             //
-            // A scanned serial is the exception. The scan has already
-            // narrowed the run to the one sensor, so a verdict on it is a
-            // verdict on the code, and no sensor is going to turn up later to
-            // change it. Waiting out the deadline would only hide that.
-            if expectedSerial != nil, !planner.candidates.contains(where: \.isAwaitingASlotToFree) {
-                report("The scanned sensor is ruled out and no other can stand in for it; giving up")
+            // A scanned serial that answered with proof the code is not its
+            // own is the exception. The scan has already narrowed the run to
+            // the one sensor, so that is a verdict on the code, and no sensor
+            // is going to turn up later to change it.
+            //
+            // Only that verdict. A scanned sensor that is busy, refused us or
+            // never answered has said nothing about the code, and the run has
+            // better things to tell the user about each of those: they are
+            // reached by waiting, by the final attempt, and by the blocker
+            // message below.
+            if expectedSerial != nil,
+               !planner.candidates.isEmpty,
+               planner.candidates.allSatisfy({ $0.status.ruleOutReason == .wrongPairingCode })
+            {
+                report("The scanned sensor says this is not its code; giving up")
                 fail(LocalizedString(
                     "That code does not belong to the sensor you scanned. Check the 4-digit code on the applicator and try again.",
                     comment: "Pairing failure reason when the scanned sensor rejected the entered code"
