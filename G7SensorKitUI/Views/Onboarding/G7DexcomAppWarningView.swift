@@ -38,6 +38,7 @@ struct G7DexcomAppWarningView: View {
 
     @Environment(\.appName) private var appName
     @Environment(\.guidanceColors) private var guidanceColors
+    @Environment(\.scenePhase) private var scenePhase
 
     @State private var isInstalled = true
 
@@ -88,6 +89,16 @@ struct G7DexcomAppWarningView: View {
             .padding([.horizontal, .bottom])
         }
         .onAppear { isInstalled = isDexcomAppInstalled() }
+        // Coming back from deleting the app is a return to the foreground,
+        // not a fresh appearance: the screen never left the hierarchy, so
+        // `onAppear` does not fire again and the check has to be redone here
+        // or it reports what was true before the user went to do the thing
+        // this screen asked for.
+        .onChange(of: scenePhase) { _, phase in
+            if phase == .active {
+                isInstalled = isDexcomAppInstalled()
+            }
+        }
     }
 
     /// What is left to know once the user has picked a way: how long the
