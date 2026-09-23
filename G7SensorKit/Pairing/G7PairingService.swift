@@ -696,7 +696,7 @@ public final class G7PairingService {
             // thing. Say how many instead.
             fail(String(
                 format: LocalizedString(
-                    "%1$d sensors here say another display is connected to them, and no other sensor took this code. Stop the Dexcom app from using them: delete it, turn off its Bluetooth, or force quit it. Then try again.",
+                    "%1$d sensors here say another display is connected to them, and no other sensor took this code. Take the Dexcom app off this phone: delete it, or offload it under Settings, General, iPhone Storage. Then try again.",
                     comment: "Pairing failure reason when several sensors keep advertising their display slot as taken (1: how many sensors)"
                 ),
                 stuck
@@ -705,7 +705,7 @@ public final class G7PairingService {
         }
         fail(String(
             format: LocalizedString(
-                "%1$@ says another display is connected to it, and no other sensor here took this code. Stop the Dexcom app from using it: delete it, turn off its Bluetooth, or force quit it. Then try again.",
+                "%1$@ says another display is connected to it, and no other sensor here took this code. Take the Dexcom app off this phone: delete it, or offload it under Settings, General, iPhone Storage. Then try again.",
                 comment: "Pairing failure reason when the only remaining sensor keeps advertising its display slot as taken (1: sensor name)"
             ),
             blocker.name

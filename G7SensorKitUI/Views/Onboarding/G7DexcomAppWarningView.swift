@@ -10,10 +10,14 @@ import SwiftUI
 /// Shown before pairing when a Dexcom app is installed.
 ///
 /// A sensor admits one display at a time and the Dexcom app will keep trying
-/// to be it, so it has to stop reaching the sensor before pairing. Deleting
-/// it is the surest way and not the only one, and it is not this screen's
-/// place to insist: someone may want the app's history, or may be pairing a
-/// second sensor while the first still belongs to the app.
+/// to be it, so the app has to go before pairing.
+///
+/// Both ways out remove the binary, which is the point. Force quitting and
+/// revoking Bluetooth were offered here once and are not any more: each
+/// leaves the app installed and one tap from taking the sensor back, so a
+/// session paired that way can be lost weeks later with nothing on screen to
+/// explain it. Offloading is kept because it is deletion that spares the
+/// history, not because it is a softer option.
 ///
 /// Three things the copy has to keep doing: say what to do before why, give
 /// each way out its own block so none of it reads as a paragraph to wade
@@ -45,15 +49,15 @@ struct G7DexcomAppWarningView: View {
                         Image(systemName: "exclamationmark.triangle.fill")
                             .font(.largeTitle)
                             .foregroundColor(guidanceColors.warning)
-                        Text(String(format: LocalizedString("Stop the %@ App", comment: "Title of the Dexcom app warning shown before pairing (1: app name, e.g. Dexcom G7 or Stelo)"), G7DexcomApp.installedAppNames))
+                        Text(String(format: LocalizedString("Remove the %@ App", comment: "Title of the Dexcom app warning shown before pairing (1: app name, e.g. Dexcom G7 or Stelo)"), G7DexcomApp.installedAppNames))
                             .font(.title2)
                             .fontWeight(.semibold)
                     }
 
-                    Text(String(format: LocalizedString("A sensor works with only one app at a time. The %1$@ app has to stop using this sensor before %2$@ can pair with it.", comment: "First paragraph of the Dexcom app warning (1: Dexcom app name, 2: appName)"), G7DexcomApp.installedAppNames, appName))
+                    Text(String(format: LocalizedString("A sensor works with only one app at a time. The %1$@ app has to come off this phone before %2$@ can pair with the sensor, and has to stay off.", comment: "First paragraph of the Dexcom app warning (1: Dexcom app name, 2: appName)"), G7DexcomApp.installedAppNames, appName))
                         .fixedSize(horizontal: false, vertical: true)
 
-                    Text(LocalizedString("Do any one of these:", comment: "Lead-in to the list of ways to stop the Dexcom app"))
+                    Text(LocalizedString("Do one of these:", comment: "Lead-in to the list of ways to remove the Dexcom app"))
                         .font(.headline)
                         .padding(.top, 2)
 
@@ -61,21 +65,14 @@ struct G7DexcomAppWarningView: View {
                         number: 1,
                         symbol: "trash",
                         title: LocalizedString("Delete the app", comment: "Title of the option to delete the Dexcom app"),
-                        detail: LocalizedString("The surest way. Your readings stay in the Dexcom cloud.", comment: "Detail of the option to delete the Dexcom app")
+                        detail: LocalizedString("Touch and hold its icon, then Remove App. Your readings stay in the Dexcom cloud.", comment: "Detail of the option to delete the Dexcom app")
                     )
                     orSeparator
                     option(
                         number: 2,
-                        symbol: "dot.radiowaves.left.and.right",
-                        title: LocalizedString("Turn off its Bluetooth", comment: "Title of the option to revoke the Dexcom app's Bluetooth permission"),
-                        detail: LocalizedString("In Settings › Privacy & Security › Bluetooth. The app keeps its history.", comment: "Detail of the option to revoke the Dexcom app's Bluetooth permission")
-                    )
-                    orSeparator
-                    option(
-                        number: 3,
-                        symbol: "xmark.app",
-                        title: LocalizedString("Force quit it", comment: "Title of the option to force quit the Dexcom app"),
-                        detail: LocalizedString("Swipe it away in the app switcher. Opening it again undoes this.", comment: "Detail of the option to force quit the Dexcom app")
+                        symbol: "arrow.down.app",
+                        title: LocalizedString("Offload the app", comment: "Title of the option to offload the Dexcom app"),
+                        detail: LocalizedString("In Settings › General › iPhone Storage. Removes the app but keeps its data, so reinstalling restores it.", comment: "Detail of the option to offload the Dexcom app")
                     )
 
                     tail

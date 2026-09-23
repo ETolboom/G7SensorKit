@@ -479,7 +479,7 @@
     "A large gap is usually temporary: pressure on the sensor while you sleep, a new sensor still settling, or a fast change the sensor has not caught up with. Calibrating to it makes a big correction to the algorithm, and when the cause passes the readings swing just as far the other way. Wait it out and check again; if the gap stays large, replace the sensor." : {
       "comment" : "Calibration advice: large differences"
     },
-    "A sensor works with only one app at a time. The %1$@ app has to stop using this sensor before %2$@ can pair with it." : {
+    "A sensor works with only one app at a time. The %1$@ app has to come off this phone before %2$@ can pair with the sensor, and has to stay off." : {
       "comment" : "First paragraph of the Dexcom app warning (1: Dexcom app name, 2: appName)"
     },
     "Accepted %@" : {
@@ -1962,14 +1962,14 @@
     "Direct Connection Available" : {
       "comment" : "Title of the settings notice offering to pair directly"
     },
-    "Do any one of these:" : {
-      "comment" : "Lead-in to the list of ways to stop the Dexcom app"
-    },
     "Do not let a Dexcom app use this sensor from now on. A sensor works with only one app at a time." : {
       "comment" : "Reminder on the pairing success screen"
     },
     "Do not use a damaged applicator, and keep fingers away from the needle end." : {
       "comment" : "Apply step 3 note"
+    },
+    "Do one of these:" : {
+      "comment" : "Lead-in to the list of ways to remove the Dexcom app"
     },
     "Done" : {
       "comment" : "Button title to finish setup",
@@ -2143,9 +2143,6 @@
     },
     "Firmware" : {
       "comment" : "title for g7 settings row showing the sensor firmware version"
-    },
-    "Force quit it" : {
-      "comment" : "Title of the option to force quit the Dexcom app"
     },
     "Glucose" : {
       "comment" : "Field label",
@@ -2795,11 +2792,11 @@
     "In Settings › Focus, open each Focus you use and add %1$@ to its allowed apps." : {
       "comment" : "Advice bullet: focus allowed apps (1: appName)"
     },
+    "In Settings › General › iPhone Storage. Removes the app but keeps its data, so reinstalling restores it." : {
+      "comment" : "Detail of the option to offload the Dexcom app"
+    },
     "In Settings › Notifications › %1$@, turn on Time Sensitive Notifications." : {
       "comment" : "Advice bullet: time sensitive setting (1: appName)"
-    },
-    "In Settings › Privacy & Security › Bluetooth. The app keeps its history." : {
-      "comment" : "Detail of the option to revoke the Dexcom app's Bluetooth permission"
     },
     "In this mode %1$@ can only read glucose while the Dexcom G7 app is installed and running a session. Pair the sensor directly instead, or reinstall the Dexcom app." : {
       "comment" : "Body of the settings warning when the Dexcom app is missing in eavesdropping mode (1: appName)"
@@ -3483,6 +3480,9 @@
     "Notifications" : {
       "comment" : "Navigation title of the notification permissions page\nStatus row title: notification permission"
     },
+    "Offload the app" : {
+      "comment" : "Title of the option to offload the Dexcom app"
+    },
     "On. Urgent alerts will sound even when your phone is silenced or in a Focus." : {
       "comment" : "Status row detail: critical alerts enabled"
     },
@@ -3697,6 +3697,9 @@
     },
     "Relax the muscles at the site. Press the applicator flat against your skin until the clear ring disappears, then press the button." : {
       "comment" : "Apply step 4: insert the sensor"
+    },
+    "Remove the %@ App" : {
+      "comment" : "Title of the Dexcom app warning shown before pairing (1: app name, e.g. Dexcom G7 or Stelo)"
     },
     "Removed" : {
       "comment" : "Row label for when the previous sensor's CGM was deleted"
@@ -5831,12 +5834,6 @@
     "Step 7%@ of 7" : {
       "comment" : "Overpatch step counter (1: letter A to E)"
     },
-    "Stop the %@ App" : {
-      "comment" : "Title of the Dexcom app warning shown before pairing (1: app name, e.g. Dexcom G7 or Stelo)\nTitle of the settings warning when a Dexcom app is installed in direct mode (1: app name)"
-    },
-    "Swipe it away in the app switcher. Opening it again undoes this." : {
-      "comment" : "Detail of the option to force quit the Dexcom app"
-    },
     "That's it. Next, enter the pairing code from the applicator." : {
       "comment" : "Overpatch step E note: pairing is next"
     },
@@ -5866,9 +5863,6 @@
     },
     "The sensor stays reserved for this phone for about 15 minutes. To use it with another app, wait that long, then forget the sensor under Settings > Bluetooth before pairing there." : {
       "comment" : "Delete CGM sheet message in direct mode about the sensor lease and iOS bond"
-    },
-    "The surest way. Your readings stay in the Dexcom cloud." : {
-      "comment" : "Detail of the option to delete the Dexcom app"
     },
     "This sensor has been used by the Dexcom app. Wait about 15 minutes after it last connected, then pair." : {
       "comment" : "Dexcom app warning: lease wait when moving an existing session"
@@ -6025,6 +6019,9 @@
     },
     "Time Sensitive Notifications" : {
       "comment" : "Status row title: time sensitive notifications"
+    },
+    "Touch and hold its icon, then Remove App. Your readings stay in the Dexcom cloud." : {
+      "comment" : "Detail of the option to delete the Dexcom app"
     },
     "Trend" : {
       "comment" : "Field label",
@@ -6187,9 +6184,6 @@
     },
     "Trying again, %1$d of %2$d" : {
       "comment" : "Status of a G7 sensor being tried again after its display slot freed up (1: turn number, 2: turns allowed)"
-    },
-    "Turn off its Bluetooth" : {
-      "comment" : "Title of the option to revoke the Dexcom app's Bluetooth permission"
     },
     "Turned off for %1$@. These are what let an alert break through a Focus without Critical Alerts." : {
       "comment" : "Status row detail: time sensitive disabled (1: appName)"
