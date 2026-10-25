@@ -864,9 +864,7 @@ extension G7CGMManager: G7SensorDelegate {
         updateDelegate(with: .newData([calibrationSample(glucose: glucose, date: date)]))
     }
 
-    /// The entered meter value as a user-entered sample, so it lands in the
-    /// glucose store and HealthKit (`HKMetadataKeyWasUserEntered`) as the
-    /// manual blood glucose reading it is, at the time it was taken.
+    /// The entered meter value as a user-entered sample, at the time it was taken.
     private func calibrationSample(glucose: UInt16, date: Date) -> NewGlucoseSample {
         NewGlucoseSample(
             date: date,
@@ -881,8 +879,7 @@ extension G7CGMManager: G7SensorDelegate {
         )
     }
 
-    /// A stable identifier in its own namespace, so a calibration can never
-    /// collide or deduplicate against a sensor reading's (`generateSyncIdentifier`).
+    /// Its own namespace, so a calibration never dedup-collides with a sensor reading.
     private func calibrationSyncIdentifier(glucose: UInt16, date: Date) -> String {
         "calibration \(state.sensorID ?? "unknown") \(date.timeIntervalSince1970) \(glucose)"
     }
@@ -1134,7 +1131,8 @@ extension G7CGMManager: G7SensorDelegate {
                 trend: message.trendType,
                 trendRate: message.trendRate,
                 isDisplayOnly: message.glucoseIsDisplayOnly,
-                wasUserEntered: message.glucoseIsDisplayOnly,
+                // user-entered marks a manual entry; this is a device reading.
+                wasUserEntered: false,
                 syncIdentifier: generateSyncIdentifier(timestamp: message.glucoseTimestamp),
                 device: device
             )
@@ -1196,7 +1194,7 @@ extension G7CGMManager: G7SensorDelegate {
                 trend: entry.trendType,
                 trendRate: entry.trendRate,
                 isDisplayOnly: entry.glucoseIsDisplayOnly,
-                wasUserEntered: entry.glucoseIsDisplayOnly,
+                wasUserEntered: false,
                 syncIdentifier: generateSyncIdentifier(timestamp: entry.timestamp),
                 device: device
             )
