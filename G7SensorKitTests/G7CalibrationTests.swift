@@ -7,12 +7,36 @@
 
 import XCTest
 import CoreBluetooth
+import LoopKit
 @testable import G7SensorKit
 
 private class TestBluetoothManager: G7BluetoothManager {
     override func makeCentralManager(queue: DispatchQueue) -> CBCentralManager {
         return CBCentralManager(delegate: self, queue: queue)
     }
+}
+
+/// Records the reading results the manager hands the app.
+private final class ReadingRecordingDelegate: CGMManagerDelegate {
+    var readingResults: [CGMReadingResult] = []
+
+    func cgmManager(_ manager: CGMManager, hasNew readingResult: CGMReadingResult) {
+        readingResults.append(readingResult)
+    }
+
+    func issueAlert(_ alert: Alert) {}
+    func retractAlert(identifier: Alert.Identifier) {}
+    func cgmManagerWantsDeletion(_ manager: CGMManager) {}
+    func doesIssuedAlertExist(identifier: Alert.Identifier, completion: @escaping (Swift.Result<Bool, Error>) -> Void) { completion(.success(false)) }
+    func lookupAllUnretracted(managerIdentifier: String, completion: @escaping (Swift.Result<[PersistedAlert], Error>) -> Void) { completion(.success([])) }
+    func lookupAllUnacknowledgedUnretracted(managerIdentifier: String, completion: @escaping (Swift.Result<[PersistedAlert], Error>) -> Void) { completion(.success([])) }
+    func recordRetractedAlert(_ alert: Alert, at date: Date) {}
+    func deviceManager(_ manager: DeviceManager, logEventForDeviceIdentifier deviceIdentifier: String?, type: DeviceLogEntryType, message: String, completion: ((Error?) -> Void)?) {}
+    func cgmManager(_ manager: CGMManager, didUpdate status: CGMManagerStatus) {}
+    func startDateToFilterNewData(for manager: CGMManager) -> Date? { nil }
+    func cgmManager(_ manager: CGMManager, hasNew events: [PersistedCgmEvent]) {}
+    func cgmManagerDidUpdateState(_ manager: CGMManager) {}
+    func credentialStoragePrefix(for manager: CGMManager) -> String { "test" }
 }
 
 final class G7CalibrationTests: XCTestCase {
@@ -32,7 +56,7 @@ final class G7CalibrationTests: XCTestCase {
     }
 
     func testCalibrationBoundsLayout() {
-        // 32 | status 00 | session 03 | signature 78563412 | lastEGV 7a00 (122) |
+        // 32 | status 00 | session 03 | signature 78563412 | lastGlucose 7a00 (122) |
         // lastCalibrationTime 1ec0 0000 (49182) | processing 02 | permitted 01 |
         // display 04 | lastProcessingUpdate 2ac1 0000 (49450)
         let data = Data(hexadecimalString: "32" + "00" + "03" + "12345678" + "7a00" + "1ec00000" + "02" + "01" + "04" + "2ac10000")!
@@ -106,6 +130,38 @@ final class G7CalibrationTests: XCTestCase {
 
         manager.cancelPendingCalibration()
         XCTAssertNotNil(manager.calibration, "an answered calibration is not a pending one; cancelling leaves it")
+    }
+
+    /// The entered meter value is emitted as a user-entered sample at the
+    /// time it was taken.
+    func testCalibrateEmitsTheEnteredMeterValueAsAUserEnteredSample() {
+        var state = G7CGMManagerState()
+        state.sessionMode = .direct
+        state.sensorID = "DXCM99"
+        let sensor = G7Sensor(mode: .direct, credentials: state.sensorCredentials, bluetoothManager: TestBluetoothManager())
+        let manager = G7CGMManager(state: state, sensor: sensor)
+        let recorder = ReadingRecordingDelegate()
+        manager.cgmManagerDelegate = recorder
+        manager.delegateQueue = DispatchQueue.main
+
+        let enteredAt = Date(timeIntervalSince1970: 1_700_000_000)
+        manager.calibrate(glucose: 145, at: enteredAt)
+
+        let settled = expectation(description: "settle")
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) { settled.fulfill() }
+        wait(for: [settled], timeout: 2)
+
+        guard case .newData(let samples)? = recorder.readingResults.last, samples.count == 1 else {
+            return XCTFail("expected one emitted sample, got \(recorder.readingResults)")
+        }
+        let sample = samples[0]
+        XCTAssertEqual(sample.quantity.doubleValue(for: .milligramsPerDeciliter), 145)
+        XCTAssertEqual(sample.date, enteredAt)
+        XCTAssertTrue(sample.wasUserEntered)
+        XCTAssertFalse(sample.isDisplayOnly)
+        XCTAssertNil(sample.trend)
+        XCTAssertNil(sample.trendRate)
+        XCTAssertNotEqual(sample.syncIdentifier, "invalid")
     }
 
     func testCalibrationIsForgottenWithTheSensor() {
