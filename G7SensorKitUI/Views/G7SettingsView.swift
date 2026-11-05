@@ -42,6 +42,7 @@ struct G7SettingsView: View {
     @State private var showingDexcomAppModeConfirmation = false
     @State private var showingDexcomAppModeInstructions = false
     @State private var showingHideSimulatedWarningSheet = false
+    @State private var showingEndSensorConfirmation = false
 
     init(didFinish: @escaping () -> Void, deleteCGM: @escaping () -> Void, pairNewSensor: @escaping () -> Void, pairCurrentSensor: @escaping () -> Void, viewModel: G7SettingsViewModel) {
         self.didFinish = didFinish
@@ -266,9 +267,28 @@ struct G7SettingsView: View {
                 )
             }
             if viewModel.sessionMode == .direct {
-                Button(action: pairNewSensor) {
-                    Label(LocalizedString("Pair New Sensor", comment: "Button title in settings to pair a replacement sensor"), systemImage: "plus.circle.fill")
-                        .font(.headline)
+                if viewModel.hasActiveSensor {
+                    Button(action: { showingEndSensorConfirmation = true }) {
+                        Text(LocalizedString("End Current Sensor", comment: "Button title in settings to end the current sensor's session early"))
+                            .foregroundColor(.red)
+                    }
+                    .actionSheet(isPresented: $showingEndSensorConfirmation) {
+                        ActionSheet(
+                            title: Text(LocalizedString("End Current Sensor?", comment: "Title of the confirmation sheet to end the current sensor early")),
+                            message: Text(LocalizedString("This ends the current sensor's session early and moves it to sensor history. Pair it again if you end it by mistake.", comment: "Message of the confirmation sheet to end the current sensor early")),
+                            buttons: [
+                                .destructive(Text(LocalizedString("End Current Sensor", comment: "Confirm button to end the current sensor early"))) {
+                                    viewModel.endCurrentSensor()
+                                },
+                                .cancel(),
+                            ]
+                        )
+                    }
+                } else {
+                    Button(action: pairNewSensor) {
+                        Label(LocalizedString("Pair New Sensor", comment: "Button title in settings to pair a replacement sensor"), systemImage: "plus.circle.fill")
+                            .font(.headline)
+                    }
                 }
             }
 

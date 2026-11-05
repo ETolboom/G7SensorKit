@@ -227,6 +227,41 @@ final class G7SessionModeMigrationTests: XCTestCase {
         XCTAssertEqual(manager.state.previousSensor?.endReason, .replaced)
     }
 
+    func testEndingTheCurrentSensorArchivesItAndUnpairs() {
+        var state = G7CGMManagerState()
+        state.sessionMode = .direct
+        state.pairingCode = "1155"
+        state.sharedKey = Data(repeating: 0xAB, count: 16)
+        state.peripheralIdentifier = UUID()
+        state.sensorID = "DXCM99"
+        state.activatedAt = Date(timeIntervalSinceNow: -3600)
+        state.pairedAt = Date(timeIntervalSinceNow: -3600)
+        let manager = makeManager(state: state)
+
+        manager.endCurrentSensor()
+
+        XCTAssertNil(manager.state.sensorID)
+        XCTAssertNil(manager.state.pairingCode)
+        XCTAssertNil(manager.state.sharedKey)
+        XCTAssertNil(manager.state.pairedAt)
+        XCTAssertEqual(manager.state.previousSensor?.sensorID, "DXCM99")
+        XCTAssertEqual(manager.state.previousSensor?.endReason, .ended)
+        XCTAssertEqual(manager.lifecycleState, .unpaired)
+    }
+
+    /// Ending with no sensor paired is a no-op: nothing to archive, and the
+    /// state is left exactly as it was.
+    func testEndingWithNoCurrentSensorIsANoOp() {
+        var state = G7CGMManagerState()
+        state.sessionMode = .direct
+        let manager = makeManager(state: state)
+
+        manager.endCurrentSensor()
+
+        XCTAssertNil(manager.state.previousSensor)
+        XCTAssertEqual(manager.lifecycleState, .unpaired)
+    }
+
     func testApplyPairingResultCancelsAPendingSessionEndGracePeriod() {
         var state = G7CGMManagerState(rawValue: legacyRawState)
         state.suspectedSessionEndAt = Date()

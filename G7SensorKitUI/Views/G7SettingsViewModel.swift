@@ -344,6 +344,25 @@ class G7SettingsViewModel: ObservableObject {
         updateValues()
     }
 
+    /// Whether a sensor is currently bound and not yet expired: "End Current
+    /// Sensor" applies then, since there is a live session to end early.
+    /// Otherwise (none bound, or the current one is expired/failed) the
+    /// action is to pair a new one.
+    var hasActiveSensor: Bool {
+        switch lifecycleState {
+        case .searching, .connecting, .warmup, .ok:
+            return true
+        case .unpaired, .gracePeriod, .expired, .failed:
+            return false
+        }
+    }
+
+    /// Ends the current sensor's session early, moving it to sensor history.
+    func endCurrentSensor() {
+        cgmManager.endCurrentSensor()
+        updateValues()
+    }
+
     func scanForNewSensor() {
         cgmManager.scanForNewSensor()
     }

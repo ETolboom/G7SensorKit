@@ -38,6 +38,8 @@ public struct G7SensorRecord: RawRepresentable, Equatable {
     public enum EndReason: String {
         case replaced
         case deleted
+        /// Ended by the user before a replacement was paired.
+        case ended
     }
 
     public var model: G7SensorModel? {

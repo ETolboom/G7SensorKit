@@ -443,6 +443,46 @@ public class G7CGMManager: CGMManager {
         }
     }
 
+    /// Ends the current sensor's session early, without pairing a
+    /// replacement: archives it as `previousSensor`, the same as being
+    /// replaced or deleted, and leaves the manager unpaired and ready for
+    /// `applyPairingResult` to pair the next one. A no-op with no sensor to end.
+    public func endCurrentSensor() {
+        guard state.sensorID != nil else { return }
+        cancelSuspectedSessionEndScan()
+        logDeviceCommunication("Ending the current sensor's session before a replacement was paired.", type: .connection)
+        retractAllLifecycleAlerts()
+        recordSensorEndIfNeeded()
+        archiveCurrentSensor(reason: .ended)
+        let newState = mutateState { state in
+            state.pairingCode = nil
+            state.peripheralIdentifier = nil
+            state.sharedKey = nil
+            state.sensorAuthenticity = .unverified
+            state.simulatedSensorWarningSuppressed = false
+            state.lastAuthenticationFailure = nil
+            state.lastAuthenticationFailureDate = nil
+            state.calibration = nil
+            state.calibrationBounds = nil
+            state.calibrationBoundsDate = nil
+            state.sensorID = nil
+            state.activatedAt = nil
+            state.pairedAt = nil
+            state.extendedVersion = nil
+            state.transmitterVersion = nil
+            state.latestReading = nil
+            state.latestReadingTimestamp = nil
+            state.lifecycleAlertsScheduledFor = nil
+            state.sensorFailedAlertIssuedFor = nil
+            state.sensorEndRecordedFor = nil
+            state.sensorFailureMessage = nil
+            state.sensorFailedAt = nil
+        }
+        sensor.stopScanning()
+        sensor.reconfigure(mode: newState.sessionMode, credentials: newState.sensorCredentials)
+        sensor.latestReadingDate = nil
+    }
+
     /// Goes back to reading through the Dexcom app's session with the same
     /// sensor. The stored key is dropped, so the Dexcom app's pairing takes
     /// the phone's slot; the pairing code is kept for switching back. Loop
